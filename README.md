@@ -1,2 +1,2 @@
-# researchAgent
+# ResearchAgent
 Educational Project
