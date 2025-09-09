@@ -1,26 +1,27 @@
 #Define API and DB
 
-name: reasearch-agent
-
+name: research-agent
+#Update ports for env!!
 services:
   api:
-   build:
-    context: .
-    dockerfile: ./api/Dockerfile
-  env_file:
-   - ./env/.env.dev
-  depends_on: [db]
-  ports: ["8000:8000"]
-
-db:
-  image: postgres:15
-  environment:
-    POSTGRES_USER:
-    POSTGRES_PASSWORD:
-    POSTGRES_DB:
-  volumes:
-    - dbdata:/var/lib/postgresql/data
-  ports: ["5432:5432"]
-
+    build:
+      context: .
+      dockerfile: ./api/Dockerfile
+    env_file:
+      - ../env/.env.dev
+    depends_on:
+      - db
+    ports: 
+      - "8000:8000"
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 volumes:
   dbdata:
