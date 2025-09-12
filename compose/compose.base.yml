@@ -5,7 +5,7 @@ name: research-agent
 services:
   api:
     build:
-      context: .
+      context: ../
       dockerfile: ./api/Dockerfile
     env_file:
       - ../env/.env.dev
