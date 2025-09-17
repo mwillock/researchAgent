@@ -6,9 +6,3 @@ services:
     environment:
       APP_ENV: dev
       LOG_LEVEL: debug
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 2s
-      retries: 3
-      start_period: 10s

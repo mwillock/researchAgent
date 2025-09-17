@@ -1,14 +1,13 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from fastapi import Depends, APIRouter
-from app.db.session import get_db
+from ..db.session import get_db
 from dotenv import load_dotenv
 import httpx, os
 
 #Defining Global Var
-load_dotenv(dotenv_path=".env")
+load_dotenv()
 url = os.getenv("OLLAMA_URL")
-print("OLLAMA_URL =", os.getenv("OLLAMA_URL"))
 
 router = APIRouter(tags=["health"])
 
@@ -26,6 +25,6 @@ def health(db: Session = Depends(get_db)):
             "status": "ok",
             "db": "up",
             "ollama":"running",
-            "models":r.json().get("models", [])
+            "models":r.json().get("models"[])
         }
     
