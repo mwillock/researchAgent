@@ -1,7 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from fastapi import Depends, APIRouter
-from ..db.session import get_db
+from api.app.db.session import get_db
 from dotenv import load_dotenv
 import httpx, os
 

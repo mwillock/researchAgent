@@ -1,5 +1,0 @@
-#DB Policies 
-
-services:
-  db:
-    restart: unless-stopped 

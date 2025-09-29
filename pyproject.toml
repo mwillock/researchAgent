@@ -1,0 +1,23 @@
+[project]
+name = "research-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Myron", email = "mwillock@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.117.1",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.11.0",
+    "python-dotenv>=1.1.1",
+    "uvicorn[standard]>=0.37.0",
+]
+
+[project.scripts]
+research-agent = "research_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
