@@ -20,7 +20,3 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
-
-
-# Create a single instance of Settings to be used throughout the application
-settings = Settings()
