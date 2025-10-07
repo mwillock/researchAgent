@@ -2,6 +2,10 @@ from pydantic import AnyUrl, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Create a single instance of Settings to be used throughout the application
+settings = Settings()
+
+
 class Settings(BaseSettings):
     #Flags
     debug: bool = Field(default=False, description="Enable verbose logging / debug toggles")
@@ -20,7 +24,3 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
-
-
-# Create a single instance of Settings to be used throughout the application
-settings = Settings()
