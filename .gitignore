@@ -1,4 +1,4 @@
-#Python 
+#Python
 __pycache__/
 *.pyc
 *.pyo
@@ -23,3 +23,7 @@ build/
 .vscode/
 .idea/
 .DS_Store
+
+.history/
+
+.history/

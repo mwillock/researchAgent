@@ -1,23 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "research-agent"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-authors = [
-    { name = "Myron", email = "mwillock@gmail.com" }
-]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.117.1",
-    "httpx>=0.28.1",
-    "pydantic-settings>=2.11.0",
-    "python-dotenv>=1.1.1",
-    "uvicorn[standard]>=0.37.0",
+  "fastapi>=0.117.1",
+  "uvicorn[standard]>=0.37.0",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "python-dotenv>=1.0",
+  "httpx>=0.27",
 ]
 
-[project.scripts]
-research-agent = "research_agent:main"
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]  # <-- look in repo root, include the "app" package
 
-[build-system]
-requires = ["uv_build>=0.8.17,<0.9.0"]
-build-backend = "uv_build"
+[tool.ruff]
+exclude = ["**/.history/**"]
+
+[tool.black]
+extend-exclude = '''
+(
+  ^\.history/
+)
+'''
