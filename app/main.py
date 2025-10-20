@@ -1,8 +1,14 @@
 from fastapi import FastAPI
 from app.core.setting import settings
+from app.core.logging import setup_logging
 from app.routers.assist import router as assist_router
 
+
 app = FastAPI(title="Research Assistant", debug=settings.debug)
+
+
+def create_app() -> FastAPI:
+    setup_logging(settings.log_level)
 
 
 @app.get("/health")
