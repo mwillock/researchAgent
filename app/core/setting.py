@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     model_general: str = Field(default="llama3.1:8b", description="General Model Llama")
     model_code: str = Field(default="codellama:7b", description="Code Model Codellama")
 
+    # Frontend URL for CORS
+    frontend_url: str | None = Field(default=None, description="Frontend URL for CORS")
     # Optional DB
     database_url: str | None = Field(default=None, description="Optional DB")
 
