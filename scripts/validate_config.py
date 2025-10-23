@@ -1,6 +1,8 @@
 import os
 import sys
 import socket
+import urllib.request
+from urllib.error import URLError, HTTPError
 from contextlib import closing
 
 
@@ -32,6 +34,14 @@ def _port_open(host: str, port: int, timeout=0.5) -> bool:
         return sock.connect_ex((host, port)) == 0
 
 
+def check_ollama(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(f"{url.rsplit('/')}/api/tags", timeout=1.5) as resp:
+            return 200 <= resp.status < 300
+    except (URLError, HTTPError, ValueError):
+        return False
+
+
 def main() -> None:
     missing = [k for k in REQUIRED_VARS if not os.getenv(k)]
     if missing:
@@ -47,6 +57,13 @@ def main() -> None:
             fail("OLLAMA_URL must start with http:// or https://")
 
         ok("ENV shape looks valid")
+        # Ollama Check
+        if not check_ollama(ollama_url):
+            warn(
+                "OLLAMA_URL not reachable or unhealthy (skipping failed; required at runtime)"
+            )
+        else:
+            ok("OLLAMA_URL reachable")
         # Optional  DB check
         if os.getenv("DB_HOST") and os.getenv("DB_PORT"):
             try:
