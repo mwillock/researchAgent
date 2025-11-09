@@ -20,7 +20,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from app.middlewares.observability import request_id_and_timing_mw
-from app.middlewares.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.setting import settings
 from app.core.logging import setup_logging
 from app.routers import meta
@@ -51,10 +51,11 @@ class _JSONFormatter(logging.Formatter):
 
 
 # ------------- Request observability: ID + latency headers ----------------
+"""
 REQUEST_ID_HDR = "X-Request-ID"
 
 
-""" async def request_id_and_timing_mw(request: Request, call_next):
+ async def request_id_and_timing_mw(request: Request, call_next):
     rid = request.headers.get(REQUEST_ID_HDR, str(uuid.uuid4()))
     start = time.perf_counter()
     response: Response | None = None
