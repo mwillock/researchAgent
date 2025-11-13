@@ -23,7 +23,7 @@ from app.middlewares.observability import request_id_and_timing_mw
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.setting import settings
 from app.core.logging import setup_logging
-from app.routers import meta
+from app.routers import assist
 from app.errors import http_error_handler
 from starlette.responses import Response
 
@@ -105,7 +105,7 @@ def create_app() -> FastAPI:
     )
     # Observability Middlewares
     app.middleware("http")(request_id_and_timing_mw)
-    app.include_router(meta.router)
+    app.include_router(assist.router)
 
     # -------------------- Core Probes ------------------------
     @app.get("/live")
@@ -130,8 +130,7 @@ def create_app() -> FastAPI:
         if ollama_ok is None:
             # probe once if not checked yet
             ollama_ok = await _check_ollama(str(settings.ollama_url))
-
-    return {"ok": bool(ollama_ok), "deps": {"ollama": bool(ollama_ok)}}
+        return {"ok": bool(ollama_ok), "deps": {"ollama": bool(ollama_ok)}}
 
     # ---------------------  Exception Handlers ------------------------
     class ErrorResponse(Response):
