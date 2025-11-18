@@ -74,7 +74,7 @@ def _call_llm(task: str, prompt: str, mock: bool) -> dict:
         }
     try:
         # generate_code should return a string (e.g. Markdown or plain text)
-        lllm_output = generate_code(prompt)
+        llm_output = generate_code(prompt)
     except Exception as exc:
         # Keep errors structured
         raise HTTPException(
@@ -85,7 +85,7 @@ def _call_llm(task: str, prompt: str, mock: bool) -> dict:
         "ok": True,
         "task": task,
         "result": {
-            "raw": lllm_output  # raw model output; you can parse/structure later if needed
+            "raw": llm_output  # raw model output; you can parse/structure later if needed
         },
     }
 
@@ -132,3 +132,91 @@ async def explain(
         raise HTTPException(status_code=502, detail="LLM backend error: {exc}") from exc
 
     return {"ok": True, "result": result}
+
+
+@router.post("/review-diff")
+async def review_diff(
+    payload: ReviewDiffRequest,
+    mock: bool = Query(
+        False, description="If true, return a mock response instead of calling LLM"
+    ),
+):
+    """
+    Review a unified diff. Returns:
+      - summary of changes
+      - issues/smells/risks
+      - suggested improved diff
+    """
+    if not payload.diff.strip():
+        raise HTTPException(status_code=400, detail="Field 'diff' cannot be empty.")
+
+    context_block = (
+        f"\n\nAdditional context:\n{payload.context}" if payload.context else ""
+    )
+
+    prompt = (
+        f"{SYSTEM_REVIEW_DIFF}\n\n"
+        "Here is the diff:\n"
+        "'''diff\n"
+        f"{payload.diff}\n"
+        "'''\n"
+        f"{context_block}"
+    )
+
+    return _call_llm("review-diff", prompt, mock)
+
+
+@router.post("/docstrings")
+async def docstrings(
+    payload: DocstringsRequest,
+    mock: bool = Query(
+        False, description="If true, return a mock response instead of calling the LLM"
+    ),
+):
+    """
+    Add or improve docstrings for a list of Python snippets in the requested style.
+    """
+    if not payload.snippets:
+        raise HTTPException(
+            status_code=400, detail="Field 'snippets' must contain at least one item."
+        )
+
+    joined_snippets = "\n\n".join(
+        f"# snippet {i + 1}\n```python\n{snippet}\n```"
+        for i, snippet in enumerate(payload.snippets)
+    )
+
+    prompt = (
+        f"{SYSTEM_DOCSTRINGS}\n\n"
+        f"Docstring style to use: {payload.style}\n\n"
+        f"Here are the snippets:\n\n{joined_snippets}"
+    )
+
+    return _call_llm("docstrings", prompt, mock)
+
+
+@router.post("/test")
+async def test(
+    payload: TestRequest,
+    mock: bool = Query(
+        False, description="If true, return a mock response instead of calling the LLM"
+    ),
+):
+    """
+    Generate runnable test for code + spec using the requested framework.
+    """
+    if not payload.code.strip():
+        raise HTTPException(status_code=400, detail="Field 'code' must not be empty")
+
+    spec_text = (
+        payload.spec or "no explicit spec was provided; infer behavior from the code "
+    )
+    prompt = (
+        f"{SYSTEM_TEST}\n\n"
+        f"Testing framework: {payload.framework}\n\n"
+        "Here is the code under test:\n"
+        f"```python\n{payload.code}\n```\n\n"
+        f"Spec / requirements:\n{spec_text}\n"
+    )
+
+    return _call_llm("tests", prompt, mock)
