@@ -51,7 +51,7 @@ lint:
 type:
 	$(MYPY) $(CODEPATHS) || true
 test:
-	$(PYTEST) $(CODEPATHS) || true
+	pytest -vv
 run:
 	@set -a; [ -f .env ] && . ./.env || true; set +a; \
 	$(UVICORN) $(APP_MODULE) --host $(RUNTIME_HOST) --port $(RUNTIME_PORT)
@@ -90,3 +90,10 @@ freeze:
 clean:
 	rm -rf $(VENV) .pytest_cache .mypy_cache .ruff_cache
 	find . -name "__pycache__" -type d -prune -exec rm -rf {} +
+
+#Docstring Test using mock
+assist-docstrings:
+	@echo "POST /assist/docstrings?mock=1"
+	curl -s -x POST "http://$(RUNTIME_HOST):$(RUNTIME_PORT)/assist/docstrings?mock=1" \
+		-H "Content-Type: application/json" \
+		-d '{"snippets": ["def add(a: int, b: int) -> int:\n    return a + b"], "style": "numpy"}' | jq .

@@ -124,14 +124,14 @@ async def explain(
         "then provide safer solutions:\n\n"
         f"```python\n{payload.code}\n```"
     )
-    try:
+    """ try:
         # generate code can be sync; FASTAPI is fine calling it here
         result = generate_code(prompt)
     except Exception as exc:
         # Keep the surface clean; log details internally
-        raise HTTPException(status_code=502, detail="LLM backend error: {exc}") from exc
+        raise HTTPException(status_code=502, detail="LLM backend error: {exc}") from exc """
 
-    return {"ok": True, "result": result}
+    return _call_llm("explain", prompt, mock)
 
 
 @router.post("/review-diff")
