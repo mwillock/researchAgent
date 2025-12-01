@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import httpx
 from typing import Optional
 from fastapi import FastAPI, HTTPException
@@ -26,53 +25,8 @@ from app.core.logging import setup_logging
 from app.routers import assist
 from app.errors import http_error_handler
 from starlette.responses import Response
+from contextlib import asynccontextmanager
 
-
-# ----------------------------- JSON Logging  ----------------------------
-class _JSONFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        payload = {
-            "time": int(time.time() * 1000),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
-        if record.exc_info:
-            payload["exc_info"] = self.formatException(record.exc_info)
-        return json.dumps(payload, ensure_ascii=False)
-
-    def _setup_logging(level: str = "INFO") -> None:
-        root = logging.getLogger()
-        root.handlers.clear()
-        root.setLevel((level or "INFO").upper())
-        handler = logging.StreamHandler()
-        handler.setFormatter(_JSONFormatter())
-        root.addHandler(handler)
-
-
-# ------------- Request observability: ID + latency headers ----------------
-"""
-REQUEST_ID_HDR = "X-Request-ID"
-
-
- async def request_id_and_timing_mw(request: Request, call_next):
-    rid = request.headers.get(REQUEST_ID_HDR, str(uuid.uuid4()))
-    start = time.perf_counter()
-    response: Response | None = None
-    try:
-        response = await call_next(request)
-        return response
-    finally:
-        elapsed_ms = int((time.perf_counter() - start) * 1000)
-        if response is not None:
-            response = Response(status_code=500)
-        response.headers[REQUEST_ID_HDR] = rid
-        response.headers["X-Elapsed-ms"] = str(elapsed_ms)
-        request.app.logger.info(
-            f"{request.method} {request.url.path} -> "
-            f"{getattr(response, 'status_code', '?')} in {elapsed_ms}"
-        )
- """
 
 # -------------------  Ollama readiness Probe -----------------------
 ollama_ok: Optional[bool] = None
@@ -88,12 +42,23 @@ async def _check_ollama(url: str) -> bool:
 
 
 # app = FastAPI(title="Research Assistant", debug=settings.debug)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: warm up ollama status
+    global ollama_ok
+    ollama_ok = await _check_ollama(str(settings.ollama_url))
+    yield
+    # Shutdown code can go here if needed
 
 
 # --------------------- FastAPI App Factory ------------------------
 def create_app() -> FastAPI:
     setup_logging(settings.log_level)
-    app = FastAPI(title=settings.app_name, debug=settings.debug)
+    app = FastAPI(
+        title=settings.app_name,
+        debug=settings.debug,
+        lifespan=lifespan,
+    )
     app.logger = logging.getLogger("app")
     origin = getattr(settings, "frontend_url", None)
     app.add_middleware(
@@ -108,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(assist.router)
 
     # -------------------- Core Probes ------------------------
+
     @app.get("/live")
     def live():
         # Simple liveness probe
@@ -157,10 +123,6 @@ def create_app() -> FastAPI:
         return http_error_handler(request, exc)
 
     # Startup hoo to warm ollama status
-    @app.on_event("startup")
-    async def on_startup():
-        global ollama_ok
-        ollama_ok = await _check_ollama(str(settings.ollama_url))
 
     return app
 

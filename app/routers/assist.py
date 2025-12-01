@@ -108,28 +108,12 @@ async def explain(
     if not payload.code.strip():
         raise HTTPException(status_code=400, detail="Code snippet cannot be empty.")
 
-    # Fast path for health checks/ testing
-    if mock:
-        return {
-            "ok": True,
-            "result": {
-                "explanation": "This function takes two numbers a & b and return their sums.",
-                "notes": "Mock response - no real LLM call made",
-            },
-        }
-
     prompt = (
         f"{SYSTEM_CODE}\n\n"
         f"Explain what this code does, list likely bugs/edge cases,"
         "then provide safer solutions:\n\n"
         f"```python\n{payload.code}\n```"
     )
-    """ try:
-        # generate code can be sync; FASTAPI is fine calling it here
-        result = generate_code(prompt)
-    except Exception as exc:
-        # Keep the surface clean; log details internally
-        raise HTTPException(status_code=502, detail="LLM backend error: {exc}") from exc """
 
     return _call_llm("explain", prompt, mock)
 
