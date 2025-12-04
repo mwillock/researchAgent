@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.services.llm import generate_code
@@ -35,25 +35,80 @@ SYSTEM_TEST = (
 )
 
 
-# -------------- Request Models --------------
+# ___________ Request Models _________________
+
+
 class ExplainRequest(BaseModel):
     code: str
 
 
 class ReviewDiffRequest(BaseModel):
     diff: str
-    context: Optional[str] = None  # e.g., repo, file, or intent
+    context: Optional[str] = None
 
 
 class DocstringsRequest(BaseModel):
-    snippets: list[str]  # list of python code snippets
-    style: Optional[str] = "numpy"  # or "google", "pep257", etc.
+    snippets: list[str]
+    style: Optional[str]
 
 
 class TestRequest(BaseModel):
     code: str
     spec: Optional[str] = None
+    framework: str = "pytest"
+
+
+# __________ Response Models _________________
+class ExplainResult(BaseModel):
+    summary: str
+    explanation: str
+    issues: str
+    suggestions: str
+    example: Optional[str] = None
+
+
+class ExplainResponse(BaseModel):
+    ok: bool = True
+    task: Literal["explain"]
+    result: ExplainResult
+
+
+class ReviewDiffResult(BaseModel):
+    summary: str
+    issues: str
+    suggested_diff: str
+    notes: Optional[str] = None  # e.g., repo, file, or intent
+
+
+class ReviewDiffResponse(BaseModel):
+    ok: bool = True
+    task: Literal["review-diff"]
+    result: ReviewDiffResult
+
+
+class DocstringsResult(BaseModel):
+    summary: str  #
+    annotated_code: str
+
+
+class DocstringsResponse(BaseModel):
+    ok: bool = True
+    task: Literal["docstrings"]
+    result: DocstringsResult
+
+
+class TestResult(BaseModel):
+    summary: str
+    test_code: str
+    notes: Optional[str] = None
     framework: str = "pytest"  # you can extend later (unittest, etc.)
+
+
+class TestResponse(BaseModel):
+
+    ok: bool = True
+    task: Literal["tests"]
+    result: TestResult
 
 
 # ---------- Helper: shared LLM caller ----------
@@ -91,49 +146,72 @@ def _call_llm(task: str, prompt: str, mock: bool) -> dict:
 
 
 # ---------------- Endpoints -----------------
-@router.post("/explain")
+@router.post("/explain", response_model=ExplainResponse)
 async def explain(
     payload: ExplainRequest,
     mock: bool = Query(
         False, description="If true, return a mock response instead of calling LLM"
     ),
 ):
-    """Explain what a peiece of code does, highlighting bugs/edge cases, and suggest for safer solutions.
-    Request body:
-    {
-        "code": "print('Hello, world!')"
-    }
-    """
     # Basic Guard: Empty code is a Client Error
     if not payload.code.strip():
         raise HTTPException(status_code=400, detail="Code snippet cannot be empty.")
-
-    prompt = (
-        f"{SYSTEM_CODE}\n\n"
-        f"Explain what this code does, list likely bugs/edge cases,"
-        "then provide safer solutions:\n\n"
-        f"```python\n{payload.code}\n```"
+    if mock:
+        return ExplainResponse(
+            task="explain",
+            result=ExplainResult(
+                summary="[mock] This is function adds tow numbers",
+                explanation="[mock] The function takes two parameters and returns their sum.",
+                issues="[mock] No issues found.",
+                suggestions="[mock] The code is safe and efficient.",
+                example="[mock] Example usage: add(2, 3) returns 5.",
+            ),
+        )
+    context_block = (
+        f"\n\nAdditional context:\n{payload.context}" if payload.context else ""
     )
 
-    return _call_llm("explain", prompt, mock)
+    prompt = (
+        f"{SYSTEM_REVIEW_DIFF}\n\n"
+        "Return sections labeled Summary, Issues, Suggested diff, Notes.\n\n"
+        "Here is the diff:\n```diff\n"
+        f"{payload.diff}\n"
+        "```\n"
+        f"{context_block}"
+    )
+    llm_text = generate_code(prompt)
+
+    return ExplainResponse(
+        task="explain",
+        result=ExplainResult(
+            summary="[LLM] This is function adds tow numbers",
+            explanation=llm_text,
+            issues=llm_text,
+            suggestions="[LLM] The code is safe and efficient.",
+            example=None,
+        ),
+    )
 
 
-@router.post("/review-diff")
+@router.post("/review-diff", response_model=ReviewDiffResponse)
 async def review_diff(
     payload: ReviewDiffRequest,
     mock: bool = Query(
         False, description="If true, return a mock response instead of calling LLM"
     ),
 ):
-    """
-    Review a unified diff. Returns:
-      - summary of changes
-      - issues/smells/risks
-      - suggested improved diff
-    """
     if not payload.diff.strip():
         raise HTTPException(status_code=400, detail="Field 'diff' cannot be empty.")
-
+    if mock:
+        return ReviewDiffResponse(
+            task="review-diff",
+            result=ReviewDiffResult(
+                summary="[mock] This change adds basic input validation.",
+                issues="[mock] No tests added.\n[mock] Error message is generic.",
+                suggested_diff="```diff\n[mock diff goes here]\n```",  # ✅ same name
+                notes="[mock] Consider adding tests for invalid inputs.",
+            ),
+        )
     context_block = (
         f"\n\nAdditional context:\n{payload.context}" if payload.context else ""
     )
@@ -147,7 +225,16 @@ async def review_diff(
         f"{context_block}"
     )
 
-    return _call_llm("review-diff", prompt, mock)
+    llm_text = generate_code(prompt)
+    return ReviewDiffResponse(
+        task="review-diff",
+        result=ReviewDiffResult(
+            summary="Model-generated review of this diff.",
+            issues=llm_text,
+            suggested_diff="```diff\n# (Structured suggested diff TODO)\n```",
+            notes=None,
+        ),
+    )
 
 
 @router.post("/docstrings")
@@ -157,12 +244,17 @@ async def docstrings(
         False, description="If true, return a mock response instead of calling the LLM"
     ),
 ):
-    """
-    Add or improve docstrings for a list of Python snippets in the requested style.
-    """
     if not payload.snippets:
         raise HTTPException(
             status_code=400, detail="Field 'snippets' must contain at least one item."
+        )
+    if mock:
+        return DocstringsResponse(
+            task="docstrings",
+            result=DocstringsResult(
+                summary="[mock] Added Google-style docstrings to provided snippets.",
+                annotated_code="```python\n# (mock annotated code with docstrings)\n```",
+            ),
         )
 
     joined_snippets = "\n\n".join(
@@ -175,8 +267,14 @@ async def docstrings(
         f"Docstring style to use: {payload.style}\n\n"
         f"Here are the snippets:\n\n{joined_snippets}"
     )
-
-    return _call_llm("docstrings", prompt, mock)
+    llm_text = generate_code(prompt)
+    return DocstringsResponse(
+        task="docstrings",
+        result=DocstringsResult(
+            summary="Model-generated summary of docstring additions.",
+            annotated_code=llm_text,
+        ),
+    )
 
 
 @router.post("/test")
@@ -192,6 +290,21 @@ async def test(
     if not payload.code.strip():
         raise HTTPException(status_code=400, detail="Field 'code' must not be empty")
 
+    if mock:
+        return TestResponse(
+            task="tests",
+            result=TestResult(
+                summary="[mock] Generated basic pytest tests for add().",
+                test_code=(
+                    "```python\n"
+                    "def test_add_basic():\n"
+                    "    assert add(1, 2) == 3\n"
+                    "```"
+                ),
+                notes="[mock] Consider adding edge-case tests.",
+            ),
+        )
+
     spec_text = (
         payload.spec or "no explicit spec was provided; infer behavior from the code "
     )
@@ -203,4 +316,12 @@ async def test(
         f"Spec / requirements:\n{spec_text}\n"
     )
 
-    return _call_llm("tests", prompt, mock)
+    llm_text = generate_code(prompt)
+    return TestResponse(
+        task="tests",
+        result=TestResult(
+            summary="Model-generated test cases.",
+            test_code=llm_text,
+            notes=None,
+        ),
+    )

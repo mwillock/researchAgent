@@ -120,7 +120,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def fallback_handler(request, exc):
-        return http_error_handler(request, exc)
+        return await http_error_handler(request, exc)
 
     # Startup hoo to warm ollama status
 

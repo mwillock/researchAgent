@@ -17,7 +17,12 @@ def test_explain_mock():
     body = resp.json()
     assert body["ok"] is True
     assert body["task"] == "explain"
-    assert "summary" in body["result"]
+
+    result = body["result"]
+    assert "summary" in result
+    assert "explanation" in result
+    assert "issues" in result
+    assert "suggestions" in result
 
 
 def test_review_diff_mock():
