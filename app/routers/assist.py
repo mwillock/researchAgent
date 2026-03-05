@@ -1,7 +1,9 @@
 from typing import Optional, Literal
+from urllib import request
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from app.services.llm import generate_code
+from app.prompt.loader import prompts
 
 router = APIRouter(prefix="/assist", tags=["assist"])
 
@@ -11,13 +13,6 @@ SYSTEM_CODE = (
     "and a tiny usage example. State assumptions explicitly when paths/APIs are unknown."
 )
 
-SYSTEM_REVIEW_DIFF = (
-    "You are a senior code reviewer. Given a code snippet and its modified version, "
-    "1) Summariaze the change made. \n"
-    "2) List issues, risk ad bugs as bullet points. \n"
-    "3) Provide a fix different that preseves intent but improves safety, reliability and security. \n"
-    "Output is Markdown"
-)
 
 SYSTEM_DOCSTRINGS = (
     "You are a Python documentation assistant. Given code snippets, you will:\n"
@@ -167,17 +162,16 @@ async def explain(
                 example="[mock] Example usage: add(2, 3) returns 5.",
             ),
         )
-    context_block = (
-        f"\n\nAdditional context:\n{payload.context}" if payload.context else ""
-    )
 
+    bundle = prompts.bundle("assist.review_diff")
     prompt = (
-        f"{SYSTEM_REVIEW_DIFF}\n\n"
-        "Return sections labeled Summary, Issues, Suggested diff, Notes.\n\n"
-        "Here is the diff:\n```diff\n"
+        f"{bundle.system}\n\n"
+        f"{bundle.output_contract}\n\n"
+        f"{bundle.safety}\n\n"
+        "Here is the diff: \n"
+        "dif:\n"
         f"{payload.diff}\n"
-        "```\n"
-        f"{context_block}"
+        "```"
     )
     llm_text = generate_code(prompt)
 
@@ -212,17 +206,17 @@ async def review_diff(
                 notes="[mock] Consider adding tests for invalid inputs.",
             ),
         )
-    context_block = (
-        f"\n\nAdditional context:\n{payload.context}" if payload.context else ""
-    )
 
+    bundle = prompts.bundle("assist.review_diff")
+    request.app.logger.info(f"assist.review_diff prompt_version={bundle.version}")
     prompt = (
-        f"{SYSTEM_REVIEW_DIFF}\n\n"
-        "Here is the diff:\n"
-        "'''diff\n"
+        f"{bundle.system}\n\n"
+        f"{bundle.output_contract}\n\n"
+        f"{bundle.safety}\n\n"
+        "Here is the diff: \n"
+        "dif:\n"
         f"{payload.diff}\n"
-        "'''\n"
-        f"{context_block}"
+        "```"
     )
 
     llm_text = generate_code(prompt)

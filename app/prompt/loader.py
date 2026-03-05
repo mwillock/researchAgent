@@ -33,3 +33,39 @@ class PromptStore:
             self._data = yaml.safe_load(f) or {}
 
         return self._data
+
+    def get(self, key: str) -> Any:
+        """
+        Retrieve a value using dot notation, e.g "assist.review_diff.system"
+        """
+        data = self.load()
+        parts = key.split(".")
+        cur: Any = data
+        for p in parts:
+            if not isinstance(cur, dict) or p not in cur:
+                raise KeyError(f"Prompt Key not found: {key}")
+            cur = cur[p]
+        return cur
+
+    def bundle(self, base_key: str) -> PromptBundle:
+        """
+        Return a task bundle, e.g base_key="assist.review_diff"
+        """
+        node = self.get(base_key)
+        if not isinstance(node, dict):
+            raise TypeError(f"Prompt bundle at {base_key} must be a dict")
+
+        system = str(node.get("system", "")).strip()
+        if not system:
+            raise ValueError(f"Missing required 'system' prompt at {base_key}")
+
+        return PromptBundle(
+            system=system,
+            output_contract=str(node.get("output_contract", "")).strip(),
+            safety=str(node.get("safety", "")).strip(),
+            version=node.get("version"),
+        )
+
+
+# Singleton store you can import anywhere
+prompts = PromptStore()

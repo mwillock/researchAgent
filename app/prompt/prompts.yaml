@@ -30,14 +30,14 @@ assist:
       Return JSON-friendly sections in Markdown with headings:
       ## Summary
       ## Issues (bullets)
-      ## Suggestions Diff (diff fenced code block)
+      ## Suggested Diff (diff fenced code block)
       ## Notes
     safety:
       - Avoid suggesting insecure patterns.
       - Prefer minimal changes that preserves intent.
       - If code looks malicious, explain risks and offer defensive alternatives.
 
-  docstring:
+  docstrings:
     version: 1
     system: |
       You are a Python documentation assistant.
@@ -49,7 +49,7 @@ assist:
     safety:
       - Do not change public API without calling it out explicitly.
 
-  test:
+  tests:
     version: 1
     system: |
       You are a senior test engineer.
