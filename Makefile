@@ -51,6 +51,7 @@ lint:
 type:
 	$(MYPY) $(CODEPATHS) || true
 test:
+	source .venv/bin/activate
 	pytest -vv
 run:
 	@set -a; [ -f .env ] && . ./.env || true; set +a; \
